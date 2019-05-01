@@ -72,7 +72,7 @@
 
 \maketitle
 \begin{abstract}
-In this article, I compare the performance of two advanced automatic cognate detection methods, LexStat \parencite{list2012lexstat} and Online PMI \parencite{rama2017fast}. I systematically vary the most important parameters influencing the behaviour of each method. I compare the results of the automatic cognate clustering with gold-standard data annotated by historical linguists \parencite{list-gold}. For this comparison, I calibrate several cluster comparison measures according to the qualitative assessment of historical linguists, in order to provide a quantitative scale of coding quality that is compatible with the expectations of historical linguists.
+In this article, I compare the performance of two advanced automatic cognate detection methods, LexStat \parencite{list2012lexstat} and Online PMI \parencite{rama2017fast}. I systematically vary the most important parameters influencing the behaviour of each method. I compare the results of the automatic cognate clustering with gold-standard data annotated by historical linguists. For this comparison, I calibrate several cluster comparison measures according to the qualitative assessment of historical linguists, in order to provide a quantitative scale of coding quality that is compatible with the expectations of historical linguists.
 \end{abstract}
 \section{Introduction}
 The challenge of identifying cognates, i.\,e. forms reflect the same common root form from an ancestral languages under different sets of sound changes towards an attested language, is an important step in the reconstruction of ancestral languages. Traditionally, identifying sound correspondences and cognates is a labour-intensive task for historical linguists.
@@ -86,14 +86,369 @@ While their general structure, as described above, is similar, LexStat and Onlin
 
 Both methods are governed by a large number of parameters to account for the complexity of the process. The effect of some of these parameters has been studied in the past eg. by \textcite{list2017potential}. A comprehensive study, in particular taking the non-linear relationships between some of the parameter values into account, is still missing. A different combination of parameter values has the potential to push the quality of automatic cognate detection past the threshold of 85\% that is generally achievable with the current default values. A better understanding of the sensitivity of the methods to their parameters can further help with fine-tuning the parameters for optimal results in a specific application case.
 
-In this article, I investigate the behaviour of LexStat and Online PMI under a broad range of parameter values on an existing set of gold-standard datasets that were cognate coded by historical linguists that are for the particular language family.
-In \cref{acd} I will explain the two automatic cognate detection methods and the meaning of the parameters I vary. \Cref{lexstat,onlinepmi} contain the information specific to the respective method.
-In \cref{evaluation} I will describe the methodology used to assess the quality, where \cref{histling} contains a description of the procedure used to decide on a cluster quality measure that would reflect historical linguists' intuitions.
-In \cref{results}, I will present the results of the analysis. \Cref{discussion} presents a discussion of the results and my conclusions.
+In this article, I investigate the behaviour of LexStat and Online PMI under a
+broad range of parameter values on an existing set of gold-standard datasets
+that were cognate coded by historical linguists that are for the particular
+language family. In \cref{acd} I will explain the two automatic cognate
+detection methods and the meaning of the parameters I vary.
+\Cref{lexstat,onlinepmi} contain the information specific to the respective
+method. In \cref{parameters} I will summarize the parameters I investigate. In
+\cref{evaluation} I will describe the methodology used to assess the quality,
+where \cref{histling} contains a description of the procedure used to decide on
+a cluster quality measure that would reflect historical linguists' intuitions.
+In \cref{results}, I will present the results of this study, first for the
+decision on cluster quality measures (\cref{measures}) and then, based on that,
+of the automatic cognate detection study in \cref{clusterquality}. Lastly,
+\Cref{discussion} presents a discussion of the results and my conclusions.
+
 
 \section{Automatic cognate detection}
 \label{acd}
+As input each of the two automatic cognate detection algorithms considered here
+expects word list data, where for a given set of concepts the most
+representative form in each language (or sometimes multiple forms, or none) is
+given in phonetic or phonemic transcription. At its core, the algorithm
+calculates a score of formal similarity or “cognate-ness” for each pair of word
+forms that have the same meaning. The output groups the forms into disjoint
+cognate classes, each containing the forms of different languages with the same
+meaning that are inferred to go back to the same root, whether through
+inheritance or through borrowing.
+
+This process consists of several steps, each of which is governed by one or more parameters.
+
+\paragraph{Sound class}
+In order to reduce the complexity of the data for the subsequent steps, and
+therefore the number of parameters each method needs to estimate, the IPA
+transcriptions of the forms are first translated into broader sound classes. In
+this article, I test the behaviour of five sound class models available in
+LingPy \parencite{lingpy26}.
+\begin{description}
+\item[dolgo] The idea to use a reduced set of sound classes together with
+  computational alignment algorithms to automatically detect cognates goes back
+  to \textcite{dolgopolsky}. The sound class model developed then is available
+  as \verb|dolgo|.
+\item[sca] The default model for Sound Class Alignment in LingPy, under the name
+  \verb|sca|, is a modified version of the Dolgopolsky sound classes. It was
+  originally introduced by \textcite{list2012sca}.
+\item[asjp] The automatic similarity judgment program \parencite{asjp} has
+  collected short word lists in the majority of the world's languages in a
+  simplified transcription. This transcription system is designed to facilitate
+  automatic comparison of forms with a focus on historical relationships and has
+  therefore also been used in cognate judgment applications. A
+  variant\footnote{Søren Wichmann mentioned a few differences, I have forgotten
+    what they were} of this system is available as the \verb|asjp| sound class
+  system.
+\item[jaeger] \Textcite{jaeger} suggested a new sound class system for automatic
+  cognate detection, which LingPy implements as \verb|jaeger|.
+\item[\textunderscore{}color] For highlighting segmented transcriptions, eg. in web interfaces,
+  LingPy also provides the \verb|_color| sound classes. As opposed to the other
+  sound class models, this model is not intended for use in ACD applications,
+  and I merely include it for comparison.
+\end{description}
+
+Feature-based alignment algorithms have been suggested as alternative to
+soundclass-based alignment \parencite{faal}, but currently no such algorithm is
+available for easy integration with ACD methods.
+
+\paragraph{Candidate threshold}
+\label{candidate}
+The sound class segments of every pair of forms belonging to the same concept
+are then aligned. This gives an edit distance for each pair, which represents
+the number of insertions, deletions or changes that is necessary to transform
+the segments of one form into the the other. This number is divided by the
+length of the form\footnote{Which one? Or is it the mean, maximum, or
+  something?} to obtain a normalized edit distance. Pairs of forms with a
+normalized edit distance of less than a candidate threshold $η$ are assumed to
+be strong candidates for cognates, and are used to calibrate the method's
+scoring function.
+
+\paragraph{Scoring pairs}
+This scoring function, which is then aware of systematic and unsystematic sound
+correspondences, is used to align all pairs with the same meaning, resulting in
+a ‘cognate-ness distance’ score. The process of calibrating the scoring function
+and calculating alignments and distance scores based on those alignments is
+different between LexStat (\cref{lexstat}) and Online PMI (\cref{onlinepmi}) and
+described below. Promising new scoring functions are currently being developed
+\parencite{jager2016automatic,jager2017using} but not yet practically available.
+
+The result of scoring each pair of forms is a network, in which the connections
+between the forms (‘edges’ in the graph literature) are “shorter” (representing
+a stronger connection) for similar forms and “longer” (representing weaker
+connection) for different forms. \Cref{f:cognate-network} shows the resulting
+network for the forms meaning ‘sacrifice’. Note that the length of the
+connections in the figure is only an approximation of the calculated distances,
+made necessary by embedding the graph in a 2-dimensional plane. The actual value
+for the cognate-ness distance is instead reflected in the colour and thickness
+of the lines.
+
+\begin{figure*}
+  \includegraphics[width=\textwidth]{sacrifice.pdf} %LDC%
+  \caption{Network of cognate-ness for the forms meaning ‘sacrifice’, calculated using
+    LexStat with the SCA sound class model. Thicker, darker lines represent a
+    smaller inferred distance between forms.
+    Different colours of the forms indicate different inferred cognate sets, see
+    \cref{t:cognates}}
+  \label{f:cognate-network}
+\end{figure*}
+\begin{table*}
+  \centering
+  \input{placeholder.tex} %LDC%
+  \caption{Results of automatic cognate detection on the forms meaning
+    ‘sacrifice’, for the networks shown in
+    \cref{f:cognate-network,f:theta035,f:theta075}}
+  \label{t:cognates}
+\end{table*}
+
+\paragraph{Clustering threshold}
+The third step, common to both algorithms, is then the identification of
+clusters in this weighted network. The clustering algorithm tries to find
+non-overlapping sets of forms that all have a short distance to each other, but
+have a long cognate-ness distance to words outside the set.
+
+In order to execute any of the clustering algoriths, the weighted network is
+first converted into an unweighted network \citeauthor{list2017potential}
+according to a clustering threshold $θ$: All edges representing a cognate-ness
+distance equal or greater than $θ$ are removed, the weights of the remaining
+edges are ignored.
+
+A lower threshold leaves fewer edges in the graph, potentially splitting
+clusters in two, while a higher threshold leads to a more “lumping” cognate
+coding. In \cref{f:infomap}, we show the same underlying data as in
+\cref{f:cognate-network}, but transformed into a non-weighted graph using
+different threshold values. The resulting cognate classes are reproduced in
+\cref{t:cognates}. Note that in \cref{f:cognate-network}, the four forms in
+different dialects of Bunak (left, dark blue) are grouped together in a single
+cognate class. With a threshold of $\theta=0.35$ (\cref{f:theta035}), this class
+is split in two, whereas for $\theta=0.75$ (\cref{f:theta075}) the Kula and Klon
+forms are grouped together with the Bunak forms.
+
+\paragraph{Clustering algorithm}
+The resulting unweighted network is then split into clusters using a standard
+graph clustering algorithm. Here, I compare the performance of four such
+algorithms.
+
+\begin{description}
+\item[complete] In complete clustering, only fully-connected subgraphs are
+  accepted as clusters. This is a strong condition: For a group of 6 cognate
+  forms, this requires that all 15 connections between them are assigned a
+  sufficiently low score to be represented in the unweighted network.
+\item[single] Single linkage clustering is the opposite extreme of clustering
+  algorithms: Two forms are connected if there is any path in the network
+  between them. This is useful to be able to connect distantly related forms
+  through intermediate relatives (eg. eng <five> – deu <fünf> – ell <pende> –
+  hin <pāch>, where each supsequent pair contains similar segments, but <five>
+  and <pāch> are quite dissimilar), but is highly susceptible to chance
+  similarities.
+\item[upgma] The Unweighted Pair Group Method with Arithmetic means
+  \parencite{upgma} takes the distances on the unweighted graph and clusters the
+  forms hierarchically, by taking each form as agroup of size one and then
+  merging pairs of existing groups step by step until the effective distance
+  between the groups becomes large. The distance of the new group to any other
+  group is the Arithmetic mean of the distances of its constituent groups to
+  that other group, which makes the algorithm conceptionally simple and easy to
+  calculate.\footnote{For comparabililty and following
+    \citeauthor{list2017potential} I use the unweighted network here, even
+    though the UPGMA algorithm could in principle function directly on the
+    weighted network.}
+\item[infomap] In the Infomap algorithm \parencite{rosvall2008maps}, an agent
+  walks randomly along the edges of the network, keeping track of which forms it
+  visited. The forms visited very often are grouped together, and the agent
+  continues its random walk on the remainder until all nodes have been grouped.
+\end{description}
+
+\subsection{The LexStat scoring function}
+\label{lexstat}
+Many current applications use the LexStat algorithm \parencite{list2012lexstat}
+for cognate detection, which has been shown to perform very well for the purpose
+of cognate coding \parencite{list2017potential}, and is easily available in the
+LingPy software package for historical linguistics \parencite{lingpy26}. LexStat
+requires at least 100 shared concepts to work well
+\parencite{list2014investigating}.
+
+LexStat \parencite{list2012lexstat} calculates systematic sound correspondences
+by using the very similar pairs forms (see \cref{candidate} above) to bootstrap
+a table of scores for systematic sound correspondence between each pair of
+languages. The assumption behind this step is that the mismatched sound classes
+between two otherwise very similar forms in two different languages are due to
+systematic sound correspondences between these two languages. To account for
+random similarities, these scores are normalized against random correspondences
+obtained from comparing the words for random concepts in the word lists. The
+cognate-ness distance of two forms can then be thought of as the effective
+number of changes (discounting systematic sound changes and over-counting
+unexpected correspondences, as derived from the bootstrap step) to transform one
+form into the other, normalized by the chance for random similarities and the
+length of the forms.
+
+PARAMETERS
+
+
+\begin{figure}
+  \begin{subfigure}[b]{0.5\textwidth}
+    \includegraphics[width=\textwidth]{supplement/figures/sacrifice035.pdf} %LDC%
+    \caption{$\theta = 0.35$}
+    \label{f:theta035}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.5\textwidth}
+    \includegraphics[width=\textwidth]{supplement/figures/sacrifice075.pdf} %LDC%
+    \caption{$\theta = 0.75$}
+    \label{f:theta075}
+  \end{subfigure}
+  \caption{Networks of cognate-ness for the forms meaning ‘sacrifice’, calculated using
+    LexStat with the SCA sound class model, clustered using infomap with different thresholds $\theta$. The forms are the same as those in \cref{f:cognate-network}.}
+  \label{f:infomap}
+\end{figure}
+
+
+\subsection{The Online PMI scoring function}
+\label{onlinepmi}
+
+An alternative to LexStat is the Online PMI method published by
+\textcite{rama2017fast}. Where LexStat uses three passes over the whole dataset
+to find sound correspondences in the data and how systematic they are, the
+Online PMI method updates its similarity scores regularly (‘online’ in the
+machine learning jargon) while going through the dataset in small batches and
+adapting the scores used for future alignments after each such batch. It uses a
+statistical measure for the co-occurence of sound segments known as ‘Pointwise
+Mutual Information’ to generate these scores.
+
+OnlinePMI performed better than LexStat in identifying cognate classes
+\parencite{rama2017fast}, but it gave worse results when reconstructing trees
+using Bayesian phylogenetics on the bases of these classes
+\parencite{rama2018are}. Compared to LexStat, the Online PMI method is
+supposedly better able to handle data with lower mutual coverage.
+
+In my analysis, I use the Online PMI implementation available from
+\url{https://github.com/evolaemp/online_cognacy_ident} in the version from
+commit \verb#3b998ae#.
+
+PARAMETERS
+
+\section{Parameter values}
+\label{parameters}
+
+\begin{table*}
+  \begin{tabular}{lp{0.7\textwidth}}
+    \hline
+    \hline
+    General parameters & Values explored \\
+    \hline
+    Sound class & \textbf{asjp}, \textbf{sca}, dolgo, jaeger, \textunderscore{}color \\
+    Candidate threshold & \textbf{0.70}, 0.50, 0.40, 0.90, 0.80, 0.30, 0.5, 0.99 \\
+    Clustering threshold & \textbf{0.55}, 0.25, 0.75, 0.35, 0.45, 0.65, 0.50, 0.60\\
+    Clustering algorithm & \textbf{infomap}, upgma, single, complete\\
+    \hline
+    \hline
+    LexStat parameters \\
+    \hline
+    Local/global ratio & \textbf{3}, 0.5, 1, 10, 0\\
+    Gap opening penalty & \textbf{-2}, -1.5, -2.5, -4, -0.5\\
+    Alignment mode & \textbf{overlap}, global, local, dialign \\
+    \hline
+    \hline
+    Online PMI parameters \\
+    \hline
+    Batch size & \textbf{64}, 256, 1024, 128, 512, 2048 \\
+    Alpha & \textbf{0.70}, 0.50, 0.80, 0.75, 0.60 \\
+    \hline
+    \hline
+  \end{tabular}
+  \caption{Parameter values systematically explored in this study. Default values, which are
+    kept fix most of the time, are given initially and in bold.}
+  \label{t:parameters}
+\end{table*}
+
+The parameter exploration was conducted as a star-like search on the
+combinations of different parameter values. It explores combinations of
+parameter values listed in \cref{t:parameters}, starting with the default values
+currently suggested by the existing literature (bold in the table), followed by
+those combinations where one of the parameters differs from the default, then
+two differences, and so on. In addition I explored several parameter settings
+estimated as highly promising according to the model tree method described in
+\cref{results} based on the results of the first 12\,000 star-search parameter
+settings.
+
+\section{Cluster comparison measures}
+\label{evaluation}
+
+In order to assess the quality of the inferred cognate codes for each parameter
+value, they need to be compared with an expert-generated gold standard coding.
+To make the codings for different parameter values commensurable, the result of
+the comparison must be a single number summarizing the amount of similarity or
+difference between the expert coding and the automatic one.
+
+Past studies have used the B-cubed F score \parencite{}, or rarely other cluster
+comparison scores. A priori, it is unclear which score might be useful for this
+comparison. In fact, considering some properties of such scores \parencite{}, it
+might be that B³ is particularly ill-suited for cognate coding, because it
+heavily penalizes [], which is however a desired property in cognate coding,
+because []. In order to optimize cognate coding for historical linguistics,
+instead of according to an abstract measure, I selected the four promising
+cluster quality measures described below. For each pair of measures, I extracted
+from the parameter exploration a pair of parameters and their cognate detection
+results, such than according to one cluster quality measure, the first cognate
+detection result was much better than the second, whereas according to the other
+cluster quality measure, the second result was much better then the first.
+
+\subsection{Forced choice task for historical linguists}
+\label{histling}
+I presented colleagues with a solid background in the historical linguistics of
+one of the language families available as gold standard with the six pairs of
+automatic cognate coding results and asked them to judge which of two coding
+results they considered better. The detailed instructions, as well as the coding
+results used and the method used to select the pairs, are given in the
+supplementary material.
+
+A consistent patterns of preference for one clustering quality measure over
+another one would mean that that measure would be closer to, and therefore a
+useful approximation for, expert intuitions concerning the quality of cognate
+judgments.
+
+\section{Results}
+\label{results}
+In order to evaluate the quality of cognate coding, we have to first consider
+the quality of cluster comparison methods according to the target audience of
+historical linguists. Their preferred cluster comparison method will then be
+used in the actual assessment of the different methods and their parameter
+values.
+
+\section{Agreement between cluster measures and historical linguists' idea of
+  quality}
+\label{measures}
+\begin{table*}
+  \begin{tabular}{llcccccc}
+    Linguist & Language family & B³ vs. AMI & Overall preference order \\
+    \hline
+    L1 & Austronesian & B³ & B3 > AMI \\
+    L2 & Indo-European & AMI & \\
+    \hline
+  \end{tabular}
+  \caption{Preferences in the forced choice task, for the sample of historical linguists}
+  \label{t:preferences}
+\end{table*}
+The results of the forced-choice task presented to the historical linguists are
+given in \cref{t:preferences}. The overall preference is clearly in favour of
+the B-cubed F score measure, so I will report the results of the cognate coding
+algorithm in terms of that measure.
+
+\section{Quality of cognate detection algorithms}
+\label{clusterquality}
+Data
+Decision tree
+
+\section{Discussion and conclusions}
+\label{discussion}
+
+How did the other guys get up to 85\%?
+
+Recommendations on method and parameter values
+
+open question (cf. Rama): How well does linguists' intuition align with quality
+needed for building trees?
 
 \printbibliography
 
 \end{document}
+
+% Local Variables:
+% TeX-engine: xetex
+% End:
