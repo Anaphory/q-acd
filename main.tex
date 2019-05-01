@@ -37,10 +37,6 @@
 \usepackage[linguistics]{forest}
 \usepackage{rotating}
 
-% Code inclusion with syntax highlighting
-\usepackage{minted} %LDC%
-\setminted{fontsize=\footnotesize} %LDC%
-
 % Tables
 \usepackage{csvsimple} %LDC%
 \usepackage{longtable}
@@ -82,7 +78,7 @@ In this article, I compare the performance of two advanced automatic cognate det
 The challenge of identifying cognates, i.\,e. forms reflect the same common root form from an ancestral languages under different sets of sound changes towards an attested language, is an important step in the reconstruction of ancestral languages. Traditionally, identifying sound correspondences and cognates is a labour-intensive task for historical linguists.
 In the last decades, automatic methods for cognate detection have been proposed and refined, becoming useful tools to support manual methods of cognate identification and other tasks in historical linguistics, for example the construction of language phylogenies \parencite{rama2018are}.
 
-Two well-supported automatic methods developed recently are LexStat \parencite{lexstat} and Online PMI \parencite{rama2017fast}. Both methods are based on reducing forms given in IPA to a limited set of sound classes and then using alignment methods to get an weighted, effective edit distance between the simplified forms. This yields a ‘cognate-ness distance’ between every pair of forms. In order to obtain cognate classes from these numbers, the complete network of all forms, with its stronger (small ‘cognate-ness distance’) and weaker (high distance) is reduced to a network in which only exactly the edges with a distance less then a threshold $θ$ are included. A standard graph clustering method then extracts those groups of forms from this graph that are highly connected to each other, but have only very few connections to forms outside the group.
+Two well-supported automatic methods developed recently are LexStat \parencite{list2012lexstat} and Online PMI \parencite{rama2017fast}. Both methods are based on reducing forms given in IPA to a limited set of sound classes and then using alignment methods to get an weighted, effective edit distance between the simplified forms. This yields a ‘cognate-ness distance’ between every pair of forms. In order to obtain cognate classes from these numbers, the complete network of all forms, with its stronger (small ‘cognate-ness distance’) and weaker (high distance) is reduced to a network in which only exactly the edges with a distance less then a threshold $θ$ are included. A standard graph clustering method then extracts those groups of forms from this graph that are highly connected to each other, but have only very few connections to forms outside the group.
 
 A main challenge for cognate detection is to distinguish between systematic and random similarities of the forms. Systematic sound correspondences between different forms in two languages are a strong indication for shared ancestry of these forms, while short words in different languages can look similar even though they do not bear any historical relation. Cognate detection methods need to be able to account for this.
 
