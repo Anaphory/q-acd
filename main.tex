@@ -1,0 +1,103 @@
+\documentclass[a4paper,11pt,twocolumn]{scrartcl}
+%\documentclass[a4paper,12pt]{scrartcl}
+
+% General style
+\usepackage{fontspec} %LDC%
+\setmainfont{Gentium Book Basic} %LDC%
+\setsansfont{DejaVu Sans} %LDC%
+\usepackage{newunicodechar} %LDC%
+\newunicodechar{→}{\fontspec{Gentium Plus}→} %LDC%
+%LDC% \DeclareUnicodeCharacter{00B1}{\pm}
+\usepackage{authblk}
+
+% Draft style
+% \usepackage{setspace}
+% \setstretch{1.5}
+% \usepackage[top=2.5cm, bottom=2.5cm, left=2.2cm, right=3.5cm]{geometry}
+% \usepackage{lineno} 
+
+% Small style stuff
+\usepackage{amsmath}
+
+% Internal references
+\usepackage[titletoc,title]{appendix}
+\usepackage{hyperref}
+\usepackage[capitalize]{cleveref}
+
+\Crefname{appsec}{Appendix}{Appendices}
+\crefname{appsec}{appendix}{appendices}
+
+% Figures
+\usepackage{subcaption}
+\usepackage{wrapfig} %LDC%
+\usepackage{graphicx} %LDC%
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+\usetikzlibrary{arrows.meta}
+\usepackage[linguistics]{forest}
+\usepackage{rotating}
+
+% Code inclusion with syntax highlighting
+\usepackage{minted} %LDC%
+\setminted{fontsize=\footnotesize} %LDC%
+
+% Tables
+\usepackage{csvsimple} %LDC%
+\usepackage{longtable}
+
+% Bibliography
+\usepackage[backend=biber,
+            bibstyle=biblatex-sp-unified,
+            citestyle=sp-authoryear-comp,
+            maxcitenames=2,url=false,
+            maxbibnames=99]{biblatex}
+\addbibresource{acd.bib}
+\renewcommand*{\bibfont}{\small}
+
+\renewbibmacro*{doi+eprint+url}{%
+    \printfield{doi}%
+    \newunit\newblock%
+    \iftoggle{bbx:eprint}{%
+        \usebibmacro{eprint}%
+    }{}%
+    \newunit\newblock%
+    \iffieldundef{doi}{%
+        \usebibmacro{url+urldate}}%
+        {}%
+      }
+      
+\newcommand\base{\tiny{} (as B)}
+
+\begin{document}
+% \begin{linenumbers}
+\title{Evaluating the quality of automatic cognate detection methods}
+\author[1]{Gereon A. Kaiping}
+\affil[1]{Leiden University Centre for Linguistics, Universiteit Leiden, NL}
+
+\maketitle
+\begin{abstract}
+In this article, I compare the performance of two advanced automatic cognate detection methods, LexStat \parencite{list2012lexstat} and Online PMI \parencite{rama2017fast}. I systematically vary the most important parameters influencing the behaviour of each method. I compare the results of the automatic cognate clustering with gold-standard data annotated by historical linguists \parencite{list-gold}. For this comparison, I calibrate several cluster comparison measures according to the qualitative assessment of historical linguists, in order to provide a quantitative scale of coding quality that is compatible with the expectations of historical linguists.
+\end{abstract}
+\section{Introduction}
+The challenge of identifying cognates, i.\,e. forms reflect the same common root form from an ancestral languages under different sets of sound changes towards an attested language, is an important step in the reconstruction of ancestral languages. Traditionally, identifying sound correspondences and cognates is a labour-intensive task for historical linguists.
+In the last decades, automatic methods for cognate detection have been proposed and refined, becoming useful tools to support manual methods of cognate identification and other tasks in historical linguistics, for example the construction of language phylogenies \parencite{rama2018are}.
+
+Two well-supported automatic methods developed recently are LexStat \parencite{lexstat} and Online PMI \parencite{rama2017fast}. Both methods are based on reducing forms given in IPA to a limited set of sound classes and then using alignment methods to get an weighted, effective edit distance between the simplified forms. This yields a ‘cognate-ness distance’ between every pair of forms. In order to obtain cognate classes from these numbers, the complete network of all forms, with its stronger (small ‘cognate-ness distance’) and weaker (high distance) is reduced to a network in which only exactly the edges with a distance less then a threshold $θ$ are included. A standard graph clustering method then extracts those groups of forms from this graph that are highly connected to each other, but have only very few connections to forms outside the group.
+
+A main challenge for cognate detection is to distinguish between systematic and random similarities of the forms. Systematic sound correspondences between different forms in two languages are a strong indication for shared ancestry of these forms, while short words in different languages can look similar even though they do not bear any historical relation. Cognate detection methods need to be able to account for this.
+
+While their general structure, as described above, is similar, LexStat and Online PMI use different methods to distinguish between random and systematic similarities. LexStat normalises raw similarity scores between different forms using the similarity scores between random pairs of forms in the same languages. Online PMI processes the data in small chunks and updates its internal memory of how systematic or unsystematic sound correspondences are after each such chunk (‘online’, in the machine learning jargon), using the information-theoretic Pointwise Mutual Information measure.
+
+Both methods are governed by a large number of parameters to account for the complexity of the process. The effect of some of these parameters has been studied in the past eg. by \textcite{list2017potential}. A comprehensive study, in particular taking the non-linear relationships between some of the parameter values into account, is still missing. A different combination of parameter values has the potential to push the quality of automatic cognate detection past the threshold of 85\% that is generally achievable with the current default values. A better understanding of the sensitivity of the methods to their parameters can further help with fine-tuning the parameters for optimal results in a specific application case.
+
+In this article, I investigate the behaviour of LexStat and Online PMI under a broad range of parameter values on an existing set of gold-standard datasets that were cognate coded by historical linguists that are for the particular language family.
+In \cref{acd} I will explain the two automatic cognate detection methods and the meaning of the parameters I vary. \Cref{lexstat,onlinepmi} contain the information specific to the respective method.
+In \cref{evaluation} I will describe the methodology used to assess the quality, where \cref{histling} contains a description of the procedure used to decide on a cluster quality measure that would reflect historical linguists' intuitions.
+In \cref{results}, I will present the results of the analysis. \Cref{discussion} presents a discussion of the results and my conclusions.
+
+\section{Automatic cognate detection}
+\label{acd}
+
+\printbibliography
+
+\end{document}
